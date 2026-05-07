@@ -1,0 +1,827 @@
+\documentclass[12pt, a4paper]{article}
+
+\usepackage[margin=1.2in]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{microtype}
+\usepackage{amsmath, amssymb}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{parskip}
+\usepackage{hyperref}
+\usepackage[round, authoryear]{natbib}
+
+\hypersetup{
+  colorlinks = true,
+  linkcolor  = black,
+  citecolor  = black,
+  urlcolor   = black
+}
+
+\titleformat{\section}{\large\bfseries}{\thesection.}{0.5em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{0.5em}{}
+\titleformat{\subsubsection}{\normalsize\itshape}{\thesubsubsection}{0.5em}{}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.75em}
+
+\title{\textbf{Formal Mathematical Representation Discovery}\\[0.4em]
+       \large A Research Thesis for AI-Native Mathematics}
+\author{}
+\date{}
+
+% -----------------------------------------------------------------------
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This thesis proposes \emph{formal mathematical representation discovery}: a
+research program that treats Lean/mathlib as a machine-readable record of
+mathematical abstraction, and builds AI systems that mine proof-state
+transition graphs for reusable motifs, retrieve structurally analogous
+theorems across domains, and detect missing abstractions through
+graph-theoretic bottlenecks. The central claim is that the next major advance
+in AI for mathematics will come not from better tactic prediction but from
+learning how representations are discovered, compressed, and
+transferred---a process that formal libraries now expose empirically for the
+first time.
+\end{abstract}
+
+% -----------------------------------------------------------------------
+\section{Central Thesis}
+
+Modern formal mathematics libraries such as Lean/mathlib
+\citep{mathlib2020} are not merely repositories of theorems and proofs.
+They are large-scale, machine-readable records of how mathematical knowledge
+is represented, compressed, transported, and reused. Their internal
+structures---definitions, typeclasses, proof states, tactic traces,
+dependency graphs, coercion paths, simplification rules, and theorem
+statements---encode a computational shadow of mathematical abstraction
+itself.
+
+The central thesis of this research program is:
+
+\begin{quote}
+The next major advance in AI for mathematics will not come only from better
+next-tactic prediction, larger language models, or brute-force proof search.
+It will come from learning how mathematical representations are discovered,
+reused, compressed, and transferred across domains.
+\end{quote}
+
+A formal mathematics system such as Lean gives us, for the first time, an
+empirical substrate for studying this process. It exposes the topology of
+proof search, the dependency geometry of mathematical concepts, the recurring
+motifs of proof construction, and the places where existing representations
+are insufficient. By mining these structures, we can build systems that
+retrieve analogies, suggest intermediate lemmas, detect missing abstractions,
+and eventually help invent new mathematical representations.
+
+This research direction can be summarized as \textbf{formal mathematical
+representation discovery}.
+
+Its goal is not simply to prove more Lean theorems. Its goal is to
+understand and automate the higher-level acts that make proof possible:
+choosing the right object, introducing the right invariant, transporting
+structure across domains, and compressing repeated proof patterns into
+reusable abstractions.
+
+% -----------------------------------------------------------------------
+\section{Motivation}
+
+Current AI theorem proving is largely framed as a local search problem. A
+model sees a proof state and predicts a tactic, a lemma, or a proof term.
+Recent systems such as AlphaProof \citep{alphaproof2025},
+DeepSeek-Prover-V2 \citep{deepseekproverv2}, and HyperTree Proof Search
+\citep{lample2022hypertree} have demonstrated that this framing, combined
+with large-scale data and reinforcement learning, can achieve remarkable
+results. Yet the framing is incomplete.
+
+Human mathematical creativity rarely consists of local tactic selection
+alone. Much of it consists of \emph{representation change}.
+
+A difficult theorem often becomes tractable only after one introduces a new
+object, defines a better interface, proves an intermediate lemma, recognizes
+an analogy with another field, or reformulates the problem in a more natural
+language. In mature mathematics, these representational moves are often more
+important than the final proof script.
+
+Formalized mathematics contains abundant evidence of this phenomenon. In
+mathlib, many definitions and structures exist not merely because they are
+mathematically natural in isolation, but because they make large families of
+theorems reusable. A typeclass hierarchy, a bundled structure, a coercion
+mechanism, a normal form, or a carefully shaped lemma can dramatically reduce
+proof complexity across hundreds of downstream results.
+
+This suggests a new view:
+
+\begin{quote}
+A mathematical abstraction is valuable when it compresses proof search and
+increases theorem transportability.
+\end{quote}
+
+Lean makes this view measurable. We can ask:
+\begin{itemize}[leftmargin=1.5em]
+  \item Which structures reduce proof length and dependency depth?
+  \item Which lemmas act as bottlenecks or bridges between domains?
+  \item Which proof-state motifs recur across apparently unrelated areas?
+  \item Which theorem statements have analogous relational structure despite
+        different terminology?
+  \item Where do proofs repeatedly suffer from the same representational
+        friction?
+  \item Can we detect missing abstractions before humans define them?
+\end{itemize}
+
+These questions move beyond theorem proving as local search and toward
+theorem proving as representation engineering.
+
+% -----------------------------------------------------------------------
+\section{Related Work}
+
+\subsection{AI Theorem Proving Systems}
+
+The dominant paradigm in AI theorem proving frames proof search as a
+sequential decision problem. AlphaProof \citep{alphaproof2025} combines a
+language model with AlphaZero-style reinforcement learning inside Lean,
+achieving silver-medal performance at the 2024 IMO. DeepSeek-Prover-V2
+\citep{deepseekproverv2} uses RL-guided subgoal decomposition to achieve
+88.9\% pass rate on MiniF2F. HyperTree Proof Search
+\citep{lample2022hypertree} applies an online AlphaZero variant over and-or
+proof trees. These systems advance the state of the art in automated proof
+but operate entirely within the tactic-prediction paradigm this thesis moves
+beyond.
+
+\subsection{Premise Selection and Retrieval-Augmented Proving}
+
+Premise selection---choosing which library lemmas to supply to a
+prover---is the earliest form of library-aware proof automation. The hammer
+tradition \citep{paulson2010sledgehammer, blanchette2016hammering} introduced
+tools like Sledgehammer for Isabelle, with premise filters based on symbol
+overlap \citep{meng2009mepo} and machine-learned classifiers
+\citep{kuhlwein2013mash}. \citet{kaliszyk2014} demonstrated that ML-guided
+premise selection at scale substantially increases automated proof coverage.
+LeanDojo \citep{yang2023leandojo} extends this to Lean~4, providing
+programmatic proof-state extraction and a retrieval-augmented prover
+(ReProver). LeanSearch \citep{gao2024leansearch} provides semantic search
+over Mathlib4 for informal natural-language queries. COPRA
+\citep{thakur2023copra} uses GPT-4 with retrieved lemmas and stateful
+backtracking.
+
+This thesis's analogy retrieval component (\S\ref{sec:retrieval}) is related
+to premise selection but differs in aim: rather than retrieving lemmas to
+supply to a prover, it retrieves structurally analogous theorems as a source
+of proof strategy, using multi-layer graph structure rather than text or
+symbol overlap.
+
+\subsection{Graph-Based Representations of Formal Libraries}
+\label{sec:related-graphs}
+
+Two bodies of work have applied graph analysis to formal proof libraries,
+forming the closest technical predecessors to this thesis.
+
+\citet{paliwal2020graph} and \citet{bansal2019holist} apply graph neural
+networks to HOL Light formula graphs for tactic and premise prediction. These
+systems use graph structure within individual theorem statements but do not
+mine cross-theorem motifs or study abstraction at the library level.
+
+\citet{huch2022} models the Isabelle Archive of Formal Proofs as a complex
+network (1.8M nodes, 2.8M edges) and studies centrality metrics, finding
+small-world structure and scale-free in-degree distributions. This is the
+closest existing work to the graph extraction proposed in
+\S\ref{sec:extraction}, but it examines only static dependency centrality and
+does not pursue motif mining, analogy retrieval, or abstraction detection.
+
+\citet{blanchette2015mining} mine the AFP empirically for proof statistics:
+proof size, tactic usage distributions, dependency structure, and proof style
+evolution. This is the most direct precursor to the motif mining proposal in
+\S\ref{sec:motif-mining}. The key distinction is that \citet{blanchette2015mining}
+report descriptive statistics over tactic sequences; this thesis proposes to
+extract structured motifs from proof-state transition graphs and use them
+operationally for retrieval and abstraction suggestion.
+
+PACT \citep{han2021pact} extracts self-supervised training tasks from Lean
+proof terms. LeanDojo \citep{yang2023leandojo} extracts proof states,
+premises, and tactic traces from Lean~4 at scale. The trace collection layer
+(\S\ref{sec:arch-layer1}) builds on and extends this infrastructure.
+
+\subsection{Proof Patterns and Mathematical Analogy}
+
+The identification of recurring proof structure has precursors in both formal
+methods and AI planning. \citet{freitas2014} identify named, reusable
+``proof patterns'' for formal verification---recurring solutions to common
+proof obligations. These patterns are manually identified by experts; this
+thesis proposes automated discovery from data at scale.
+
+Work on proof analogy in automated reasoning dates to the 1980s.
+\citet{boydelatour1987} propose second-order pattern matching to transform
+known proof terms into candidates for analogous propositions.
+\citet{melis1994} use derivational analogy at the level of proof plans to
+guide automated provers by replaying known analogous proofs. This thesis
+pursues analogy at a different level of abstraction---structural graph
+similarity across a large formal library---and aims at retrieval rather than
+direct proof transfer.
+
+The cognitive science foundation for relational analogy is structure-mapping
+theory \citep{gentner1983, falkenhainer1989sme}, which holds that analogical
+reasoning aligns relational structure between domains rather than surface
+features. The Structure-Mapping Engine (SME) operationalizes this as an
+algorithm over relational descriptions. The multi-layer graph retrieval
+proposed in \S\ref{sec:retrieval} can be viewed as a large-scale,
+data-driven realization of structure-mapping principles in a formal
+mathematical setting.
+
+\subsection{Library Learning and Abstraction Discovery}
+
+The program synthesis community has studied abstraction discovery as a
+library learning problem. DreamCoder \citep{ellis2021dreamcoder} jointly
+learns reusable library abstractions and a neural search policy through
+wake-sleep iteration. Stitch \citep{bowers2023stitch} provides a
+significantly more efficient top-down abstraction algorithm using program
+compression ratio as the primary metric of abstraction quality. LAPS
+\citep{wong2021laps} extends DreamCoder with natural language annotations to
+guide library learning.
+
+These systems are the program synthesis analogues of what this thesis
+proposes for formal mathematics. The key differences are: (i)~the objects
+are types and propositions rather than input-output examples; (ii)~correctness
+is guaranteed by Lean's type checker rather than test suites; (iii)~the
+abstraction space includes typeclasses, coercions, and universal properties,
+which have no direct program synthesis analogue; and (iv)~the corpus is a
+mature human-curated library rather than a set of synthetic tasks.
+
+\subsection{Perspectives on Mathematical Abstraction}
+
+\citet{mitchell2021} reviews AI approaches to abstraction and
+analogy-making, concluding that no current system achieves human-level
+analogical generalization and proposing evaluation criteria.
+\citet{zhang2023cognitive} examine AI for mathematics from a cognitive
+science perspective, arguing that current systems lack the
+representation-change capabilities that make human mathematical reasoning
+powerful---a diagnosis this thesis takes as its starting point.
+
+% -----------------------------------------------------------------------
+\section{Core Hypotheses}
+
+This research program rests on five concrete hypotheses.
+
+\subsection{Hypothesis 1: Proof Traces Contain Recurring Cross-Domain Motifs}
+
+Lean proofs are not arbitrary tactic sequences. They contain recurring
+structural patterns: introducing witnesses, decomposing conjunctions,
+applying extensionality, transporting along equivalences, normalizing
+coercions, invoking universal properties, reducing goals by induction, or
+closing branches through simplification.
+
+These motifs often recur across different mathematical domains. Prior
+empirical work on the Isabelle AFP \citep{blanchette2015mining} and manual
+pattern identification \citep{freitas2014} support the existence of such
+patterns; this thesis proposes to discover them automatically from
+proof-state transition graphs in Lean/mathlib.
+
+\subsection{Hypothesis 2: Theorem Analogy Can Be Retrieved Through Relational
+Structure}
+
+Many important mathematical analogies are not lexical. Two theorems may
+share little vocabulary but have similar dependency neighborhoods, type
+structures, proof skeletons, or relational patterns.
+
+Structure-mapping theory \citep{gentner1983, falkenhainer1989sme} predicts
+that the relevant similarity is relational, not featural. A retrieval system
+based on multi-layer formal graphs may find relational analogies that
+text-based systems such as LeanSearch \citep{gao2024leansearch} miss.
+
+\subsection{Hypothesis 3: Missing Abstractions Leave Measurable Traces}
+
+When a library lacks the right abstraction, users compensate through repeated
+proof patterns, duplicated lemmas, long coercion chains, brittle rewrite
+sequences, and similar theorem statements spread across namespaces. These
+phenomena should be detectable, turning abstraction discovery into a
+mathematical refactoring problem analogous to code clone detection
+\citep{roycordy2007, koschke2007}.
+
+\subsection{Hypothesis 4: Abstraction Quality Can Be Measured by Compression}
+
+A good abstraction reduces the cost of future proof. Quantitative measures
+of abstraction value include: proof length reduction, dependency reuse,
+decrease in branching factor, reduction of repeated proof motifs, increased
+theorem transportability, and decrease in coercion and normalization burden.
+This compression-as-quality view is operationalized in program synthesis by
+\citet{bowers2023stitch}; this thesis applies it in the richer setting of
+dependent type theory.
+
+\subsection{Hypothesis 5: Proof-State Topology Predicts Difficulty and
+Useful Intermediate Lemmas}
+
+A proof is a trajectory through a space of proof states. Some intermediate
+states act as bottlenecks: once reached, many downstream goals become easy.
+These bottleneck states may correspond to useful intermediate lemmas,
+invariants, or representation changes, and their geometry may guide lemma
+invention and proof planning.
+
+% -----------------------------------------------------------------------
+\section{Research Agenda}
+\label{sec:agenda}
+
+The agenda has four mutually reinforcing components.
+
+\subsection{Lean Graph Extraction and Normalization}
+\label{sec:extraction}
+
+The first task is to construct a graph-based representation of Lean/mathlib
+that is rich enough to capture mathematical structure but normalized enough
+to avoid irrelevant syntactic noise.
+
+Existing tools provide a starting point. LeanDojo \citep{yang2023leandojo}
+extracts proof states, premise annotations, and tactic traces from Lean~4
+repositories at scale. PACT \citep{han2021pact} demonstrates that rich
+training data can be extracted from Lean proof terms. This project extends
+such infrastructure to produce a multi-layer graph intermediate
+representation.
+
+The system should extract multiple graph layers:
+
+\subsubsection{Declaration dependency graph}
+Nodes are definitions, theorems, instances, structures, and lemmas. Edges
+represent dependency, invocation, unfolding, instance use, or theorem
+application.
+
+\subsubsection{Expression graph}
+Theorem statements, definitions, and proof terms are represented as typed
+expression graphs capturing binders, applications, constants, equalities,
+propositions, functions, inductive types, and typeclass constraints.
+
+\subsubsection{Typeclass and coercion graph}
+This graph records how mathematical structures are connected through
+instances, coercions, inheritance, bundled structures, and canonical
+constructions.
+
+\subsubsection{Proof-state transition graph}
+For tactic proofs, each tactic transforms one or more goals into successor
+goals, inducing a transition graph over proof states. The graph records local
+context, target type, generated subgoals, tactic class, and closure
+mechanism.
+
+\subsubsection{Simplification and rewriting graph}
+\texttt{simp}, \texttt{rw}, normalization, and definitional equality hide
+substantial reasoning. The system exposes, where possible, the rewrite rules
+and normalization paths used to close goals.
+
+The central design problem is normalization. Raw Lean expressions contain
+variable names, elaboration artifacts, syntactic choices, universe levels,
+implicit arguments, coercions, and proof-irrelevant details. The system must
+quotient out accidental differences while preserving mathematically meaningful
+structure.
+
+\subsection{Proof Motif Mining}
+\label{sec:motif-mining}
+
+Once proof-state transition graphs are available, the next project is to
+discover recurring proof motifs.
+
+A proof motif is a repeated local or global pattern in proof-state evolution.
+It is not merely a tactic sequence---it is a structural transformation
+pattern over goals, hypotheses, and generated subgoals.
+
+Empirical analysis of the Isabelle AFP \citep{blanchette2015mining} and
+manually curated proof patterns for formal methods \citep{freitas2014} suggest
+that such recurring structures exist. The open question is whether they can
+be discovered automatically from proof-state transition graphs in a form
+useful for retrieval and proof planning.
+
+The project would mine frequent subgraphs from proof-state transition graphs
+and cluster them by structural similarity, producing a library of proof
+motifs.
+
+\paragraph{Evaluation.}
+\begin{enumerate}[leftmargin=1.5em]
+  \item \textit{Cross-domain recurrence}: Do motifs appear across multiple
+        namespaces and mathematical areas?
+  \item \textit{Predictive value}: Does motif identity help predict the next
+        tactic or proof step?
+  \item \textit{Retrieval value}: Can motif-aware retrieval find useful
+        analogous proofs given a proof state?
+  \item \textit{Compression value}: Can motifs summarize many proofs more
+        compactly than tactic sequences?
+  \item \textit{Human interpretability}: Do mathematicians or Lean users
+        recognize mined motifs as meaningful strategies?
+\end{enumerate}
+
+\subsection{Theorem Analogy Retrieval}
+\label{sec:retrieval}
+
+The next component is a retrieval system that finds structurally analogous
+theorems across mathlib. Given a theorem statement, proof state, or partial
+proof, the system returns other theorems similar not merely in text but in
+mathematical structure---motivated by structure-mapping theory
+\citep{gentner1983, falkenhainer1989sme} and prior work on proof-plan
+analogy \citep{melis1994}.
+
+Similarity is computed using a combination of theorem statement expression
+graphs, dependency neighborhoods, typeclass neighborhoods, proof motif
+signatures, proof-state transition summaries, namespace distance, shared
+abstraction usage, graph embeddings, and exact or approximate subgraph
+matching.
+
+\paragraph{Evaluation.}
+\begin{enumerate}[leftmargin=1.5em]
+  \item \textit{Known analogue pairs}: Human-curated pairs of analogous
+        theorems as a held-out benchmark.
+  \item \textit{Proof reuse prediction}: Whether retrieved theorems help
+        prove held-out results.
+  \item \textit{Namespace transfer}: Whether the system retrieves useful
+        results from different mathematical domains.
+  \item \textit{Ablation against baselines}: Compare BM25 over theorem
+        names and docstrings; embedding-based search \citep{gao2024leansearch};
+        symbol-overlap retrieval \citep{meng2009mepo}; dependency-graph-only
+        retrieval; proof-motif-only retrieval; and full multi-layer graph
+        retrieval.
+  \item \textit{Expert judgment}: Ask Lean users whether retrieved analogies
+        are mathematically meaningful.
+\end{enumerate}
+
+The key claim to test is: \textit{formal graph structure contains analogy
+information not captured by theorem names or text embeddings alone.}
+
+\subsection{Missing Abstraction Detection}
+
+The most ambitious component is a system that detects where mathlib lacks
+the right representation.
+
+This turns abstraction discovery into a mathematical refactoring problem
+\citep{roycordy2007}. Just as code clone detection identifies repeated code
+that should be factored into a shared abstraction, proof clone detection
+identifies repeated proof structure that signals a missing lemma, typeclass,
+or interface. The analogy with program synthesis library learning is also
+direct: both DreamCoder \citep{ellis2021dreamcoder} and Stitch
+\citep{bowers2023stitch} identify reusable program substructures by finding
+patterns that improve compression; this thesis applies an analogous principle
+to formal proofs, exploiting the richer type-theoretic structure of
+Lean/mathlib.
+
+\paragraph{Evaluation.}
+Evaluation uses three complementary approaches.
+
+\textit{Retrospective}: Use mathlib history. Identify moments when important
+abstractions were introduced. Ask whether the system, using only the
+pre-abstraction state, would have detected the relevant cluster of
+representational pain.
+
+\textit{Prospective}: Run the system on current mathlib, produce suggestions,
+and have maintainers judge whether the suggestions are meaningful and whether
+accepted suggestions shorten proofs.
+
+\textit{Synthetic}: Remove or hide known lemmas and abstractions from a
+subset of the library and test whether the system rediscovers the need for
+them.
+
+% -----------------------------------------------------------------------
+\section{Technical Architecture}
+
+A plausible architecture has six layers.
+
+\subsection{Layer 1: Trace Collection}
+\label{sec:arch-layer1}
+
+Instrument Lean to collect theorem statements, proof terms, tactic traces,
+proof states before and after tactics, generated subgoals, used lemmas,
+typeclass resolution traces, simplification traces, coercion insertions, and
+elaboration metadata. Existing infrastructure from LeanDojo
+\citep{yang2023leandojo} and PACT \citep{han2021pact} provides a foundation;
+the key extension is the proof-state transition graph and normalization
+pipeline.
+
+\subsection{Layer 2: Formal Graph IR}
+
+Convert raw Lean data into a normalized graph intermediate representation
+stable across superficial syntax changes. Work by \citet{paliwal2020graph}
+and \citet{bansal2019holist} on graph representations for HOL Light provides
+relevant prior art; the Lean~4 setting introduces additional structure through
+its typeclass and coercion system.
+
+\subsection{Layer 3: Motif and Pattern Mining}
+
+Mine repeated structures including frequent proof-state transitions, theorem
+statement schemas, recurring dependency neighborhoods, repeated
+coercion/rewrite paths, common proof skeletons, and bottleneck states. This
+layer combines symbolic graph algorithms with learned embeddings. The static
+dependency analysis of \citet{huch2022} on the Isabelle AFP demonstrates that
+large formal library graphs have measurable large-scale structure; this layer
+extends that analysis to proof-state dynamics.
+
+\subsection{Layer 4: Retrieval and Analogy}
+
+Build retrieval models over the graph IR using contrastive learning over
+multi-layer theorem graphs, with ablations against text-embedding baselines
+\citep{gao2024leansearch} and symbol-overlap baselines \citep{meng2009mepo}.
+Additional methods to explore include graph kernels, subgraph matching,
+nearest-neighbor search over graph embeddings, and hybrid symbolic-neural
+retrieval.
+
+\subsection{Layer 5: Abstraction Scoring}
+
+Define metrics for representational inefficiency and abstraction value,
+including: repeated motif density, proof compression ratio
+\citep{bowers2023stitch}, dependency centrality, namespace-spanning
+recurrence, typeclass boundary friction, search entropy, proof-state
+branching factor, normalized proof length, and theorem transportability.
+
+\subsection{Layer 6: Interactive Assistant}
+
+Expose the system to users as an assistant for formal mathematics. Given a
+proof state, it can suggest analogous proof patterns, useful intermediate
+lemmas, repeated hypotheses, alternative transports, and potential missing
+abstractions. The final system is not merely an auto-prover; it is a
+representation-aware mathematical assistant.
+
+% -----------------------------------------------------------------------
+\section{Initial Projects}
+
+\subsection{Project 1: Proof-State Motif Mining in Mathlib}
+
+\textbf{Research question}: Do formal proofs contain recurring structural
+motifs that are stable across domains and predictive of proof strategy?
+
+\textbf{Deliverables}: proof-state graph extractor; motif mining algorithm;
+motif taxonomy; visualization tool; evaluation on tactic prediction and
+theorem retrieval.
+
+\textbf{Paper claim}: Proof-state transition graphs contain reusable
+cross-domain motifs not captured by tactic sequences alone.
+
+\subsection{Project 2: Structural Theorem Analogy Retrieval}
+
+\textbf{Research question}: Can formal graph structure retrieve useful
+mathematical analogies beyond lexical or embedding-based theorem search?
+
+\textbf{Deliverables}: multi-layer theorem graph representation; retrieval
+benchmark with human-curated analogue pairs; comparison against text-embedding
+baselines \citep{gao2024leansearch} and symbol-overlap baselines
+\citep{meng2009mepo}; case studies of cross-domain analogies.
+
+\textbf{Paper claim}: Multi-layer formal graph retrieval finds structurally
+analogous theorems across mathlib and improves proof reuse.
+
+\subsection{Project 3: Representation Inefficiency and Missing Lemma
+Discovery}
+
+\textbf{Research question}: Can missing abstractions be detected through
+repeated proof patterns and graph-theoretic bottlenecks?
+
+\textbf{Deliverables}: representation inefficiency score; retrospective study
+using mathlib history; system-generated missing lemma candidates; evaluation
+through proof compression.
+
+\textbf{Paper claim}: Formal libraries contain measurable representational
+pain points that can be used to suggest abstractions reducing proof
+complexity.
+
+% -----------------------------------------------------------------------
+\section{Why This Is Different From Existing AI Theorem Proving}
+
+Most current systems attempt to automate proof search, asking:
+\begin{quote}
+Given a proof state, what tactic should be applied next?
+\end{quote}
+
+This research asks a different question:
+\begin{quote}
+Given a mathematical landscape, what representation would make proof search
+easier?
+\end{quote}
+
+Tactic prediction is local; representation discovery is global. Tactic
+prediction imitates proof scripts; representation discovery studies why some
+proof scripts become short, reusable, and natural. Tactic prediction operates
+within the current library; representation discovery asks how the library
+itself should evolve. Tactic prediction tries to close goals; representation
+discovery tries to invent the objects that make goals close naturally.
+
+This thesis also differs from the closest existing work on formal library
+analysis. \citet{huch2022} analyzes the Isabelle AFP as a complex network and
+studies centrality metrics, but examines only static dependency structure and
+does not mine proof-state dynamics, attempt motif retrieval, or suggest
+missing abstractions. \citet{blanchette2015mining} mine the AFP for
+descriptive proof statistics but do not use the results operationally for
+retrieval or abstraction suggestion. Both works analyze formal libraries; this
+thesis uses formal library structure as an active substrate for representation
+discovery.
+
+The long-term goal is not just an AI that proves existing theorems, but an
+AI that helps mathematicians build better mathematical languages.
+
+% -----------------------------------------------------------------------
+\section{Why Lean Is the Right Substrate}
+
+Lean is especially suitable for this research because it combines: a large
+and actively developed mathematical library \citep{mathlib2020}; expressive
+dependent type theory; rich typeclass mechanisms; tactic-based proof
+development; machine-checkable proof terms; substantial use of abstraction
+and hierarchy; enough library history to study abstraction evolution; an
+active community of expert formalizers; and existing extraction infrastructure
+\citep{yang2023leandojo, han2021pact}.
+
+The HOL Light ecosystem provides a useful comparison point. HOList
+\citep{bansal2019holist} and the GNN work of \citet{paliwal2020graph}
+demonstrate that graph-structured formal proof data supports meaningful
+machine learning. Lean/mathlib offers a richer typeclass hierarchy, a larger
+and more systematically organized library, and a more active community.
+
+Other proof assistants are also relevant. The Isabelle AFP has been analyzed
+graphically \citep{huch2022} and statistically \citep{blanchette2015mining},
+and the Mizar Mathematical Library has a long history as a formal corpus.
+These libraries may serve as secondary validation datasets to test whether
+mined motifs and detected abstractions generalize across systems.
+
+% -----------------------------------------------------------------------
+\section{Expected Contributions}
+
+\paragraph{To AI theorem proving.}
+Representation-aware retrieval, proof planning, intermediate lemma discovery,
+and abstraction-guided search.
+
+\paragraph{To formal methods.}
+Tools for library refactoring, proof maintenance, theorem organization, and
+abstraction quality measurement.
+
+\paragraph{To programming languages.}
+A treatment of formal mathematics libraries as evolving typed knowledge
+systems, with abstraction studied as an empirical software phenomenon.
+
+\paragraph{To machine learning.}
+New graph-structured learning problems grounded in rigorous symbolic data.
+
+\paragraph{To mathematics.}
+Systems that may help mathematicians discover analogies, transport ideas
+across fields, and identify the right objects to define.
+
+\paragraph{To the philosophy and cognitive science of mathematics.}
+A computational way to study abstraction, analogy, representation, and proof
+compression---operationalizing theoretical frameworks such as structure-mapping
+theory \citep{gentner1983} on large-scale formal data \citep{mitchell2021,
+zhang2023cognitive}.
+
+% -----------------------------------------------------------------------
+\section{Long-Term Vision}
+
+The long-term vision is an AI-native environment for formal mathematics in
+which the system does not merely autocomplete proofs, but actively helps
+users navigate the space of mathematical representations.
+
+The program synthesis community has shown that library learning from a corpus
+of programs is feasible: DreamCoder \citep{ellis2021dreamcoder} and Stitch
+\citep{bowers2023stitch} demonstrate that useful abstractions can be
+discovered by mining reusable structure and measuring compression. This thesis
+pursues an analogous program for formal mathematics, where the corpus is
+Lean/mathlib, the abstractions are mathematical definitions and typeclasses,
+and correctness is guaranteed by the type checker rather than by test suites.
+The richer type-theoretic structure of formal mathematics creates both
+additional challenges (the abstraction space includes coercions, universal
+properties, and bundled structures with no direct program synthesis analogue)
+and additional opportunities (graph structure is richer, and correctness is
+mechanically verified).
+
+In this environment, Lean becomes more than a proof checker. It becomes a
+microscope for mathematical structure.
+
+The most ambitious version of the thesis is:
+
+\begin{quote}
+Formal mathematics libraries are the first large-scale datasets from which
+machines can learn the dynamics of mathematical abstraction.
+\end{quote}
+
+If this is true, then the future of AI for mathematics is not merely
+automated proof. It is automated representation discovery.
+
+The path from the three initial projects to this vision requires
+demonstrating, sequentially: (i)~that proof-state motifs exist and are
+cross-domain; (ii)~that graph-based analogy retrieval outperforms text-based
+retrieval on a held-out benchmark; and (iii)~that the system's
+missing-abstraction suggestions correspond to genuine improvements in
+mathlib. Each step is independently publishable and provides the empirical
+foundation for the next.
+
+% -----------------------------------------------------------------------
+\section{Risks and Failure Modes}
+
+\paragraph{Risk 1: Lean artifacts may overwhelm mathematical signal.}
+Proof states contain many artifacts from elaboration, typeclass resolution,
+coercions, and naming choices. Graph mining may discover Lean-specific noise
+rather than mathematical structure.
+\textit{Mitigation}: normalization, quotienting, ablation studies,
+cross-namespace validation, and comparison across different formalizations.
+
+\paragraph{Risk 2: Graph similarity may not correspond to meaningful analogy.}
+Two theorem graphs may look similar for superficial reasons, while deep
+analogies may be structurally distant.
+\textit{Mitigation}: combine symbolic graph features with expert judgment,
+proof reuse evaluation, and retrieval-based downstream tasks. Benchmark
+against human-curated analogue pairs.
+
+\paragraph{Risk 3: Missing abstraction detection may produce vague suggestions.}
+It is easy to identify repeated patterns; it is harder to propose a clean
+abstraction.
+\textit{Mitigation}: begin with missing lemma discovery and proof compression
+before attempting new structure invention.
+
+\paragraph{Risk 4: Full proof-state extraction may be technically expensive.}
+Tracing all of mathlib may be large, brittle, or slow. LeanDojo
+\citep{yang2023leandojo} provides starting infrastructure but is not
+optimized for full proof-state transition graph extraction.
+\textit{Mitigation}: start with selected domains, cache aggressively, support
+incremental extraction, and focus first on tactic-level traces and dependency
+graphs.
+
+\paragraph{Risk 5: The project may become too philosophical.}
+The big picture is attractive, but the field will only move if concrete
+systems and evaluations exist.
+\textit{Mitigation}: anchor the research agenda in three initial artifacts
+(motif miner, analogy retriever, missing abstraction detector), each with a
+concrete, reproducible evaluation.
+
+% -----------------------------------------------------------------------
+\section{Positioning Statement}
+
+This research direction is not only ``AI for theorem proving,'' ``graph
+mining on mathlib,'' or ``retrieval for Lean.'' It is the study and
+automation of how formal mathematical representations are created,
+compressed, reused, and transported.
+
+\begin{quote}
+We use Lean/mathlib as a machine-readable record of mathematical abstraction.
+By extracting and analyzing proof-state graphs, theorem dependency graphs,
+and typeclass structures, we build systems that discover proof motifs,
+retrieve cross-domain analogies, detect missing abstractions, and guide
+representation-aware proof search.
+\end{quote}
+
+Shorter: \textit{this project turns formal mathematics libraries into datasets
+for learning mathematical representation discovery.}
+
+% -----------------------------------------------------------------------
+\section{First Paper Sketch}
+
+\paragraph{Possible title.}
+\textit{Proof Motifs in Formal Mathematics: Mining Reusable Proof-State
+Patterns from Lean/mathlib}
+
+\paragraph{Core claim.}
+Formal proof traces contain recurring structural motifs that appear across
+mathematical domains and improve theorem retrieval and proof-step prediction.
+
+\paragraph{Contributions.}
+\begin{enumerate}[leftmargin=1.5em]
+  \item A proof-state graph extraction pipeline for Lean~4, extending
+        LeanDojo \citep{yang2023leandojo} with transition-graph structure.
+  \item A normalized representation of tactic-induced proof-state transitions.
+  \item A motif mining algorithm for formal proofs.
+  \item An empirical taxonomy of recurring proof motifs in mathlib.
+  \item Evidence that motif features improve theorem retrieval or proof
+        guidance.
+\end{enumerate}
+
+\paragraph{Evaluation.}
+Motif recurrence across namespaces; prediction of next tactic category;
+retrieval of proof-similar theorems; human evaluation of motif
+interpretability; ablation against tactic-sequence baselines, theorem-text
+baselines \citep{gao2024leansearch}, and dependency-graph-only baselines
+\citep{huch2022}.
+
+\paragraph{Why this paper matters.}
+It demonstrates that formal proof traces contain reusable higher-level
+structure beyond tactic sequences. This justifies the broader agenda of
+representation-aware AI for mathematics and distinguishes this work from
+tactic prediction systems \citep{lample2022hypertree, yang2023leandojo} and
+prior static library analysis \citep{huch2022, blanchette2015mining}.
+
+% -----------------------------------------------------------------------
+\section{Final Thesis}
+
+The history of mathematics is partly the history of better representations.
+New objects, abstractions, and languages make previously impossible proofs
+natural. Until recently, this process was visible only through books, papers,
+lectures, and human interpretation. Formal mathematics changes that. It
+records mathematical representation in executable, machine-readable form.
+
+Lean/mathlib \citep{mathlib2020} therefore gives us a new scientific object:
+a large-scale formal trace of mathematical abstraction in action.
+
+The opportunity is to build systems that can read this trace---not merely to
+imitate proof steps, but to learn the structural patterns by which mathematics
+organizes itself.
+
+\begin{quote}
+By treating formal mathematics libraries as graph-structured records of
+representation, proof, and abstraction, we can build AI systems that retrieve
+deep analogies, discover reusable proof motifs, identify missing abstractions,
+and guide mathematicians toward better representations. This shifts AI for
+mathematics from local proof search toward representation discovery, the level
+at which much of mathematical creativity actually occurs.
+\end{quote}
+
+This is the direction worth leading.
+
+% -----------------------------------------------------------------------
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}
