@@ -63,27 +63,41 @@ Two bodies of work have applied graph analysis to formal proof libraries, formin
 
 Paliwal et al. [2020] and Bansal et al. [2019] (HOList) apply graph neural networks to HOL Light formula graphs for tactic and premise prediction. These systems use graph structure within individual theorem statements but do not mine cross-theorem motifs or study abstraction at the library level.
 
-Huch [2022] models the Isabelle Archive of Formal Proofs as a complex network (1.8M nodes, 2.8M edges) and studies centrality metrics, finding small-world structure and scale-free in-degree distributions. This is the closest existing work to the graph extraction proposed in §5.1, but it examines only static dependency centrality and does not pursue motif mining, analogy retrieval, or abstraction detection.
+Li et al. [2026] present a network analysis of Lean 4's Mathlib itself, extracting its dependency structure into a multilayer graph with over 308,000 declarations and millions of edges across thousands of modules. They introduce graph decompositions distinguishing explicit edges from compiler-synthesized ones and study macroscopic structural properties. This is the closest existing work to the graph extraction proposed in §5.1. The key difference is scope and use: Li et al. study Mathlib's network structure descriptively to characterize the library; this thesis proposes to use graph structure operationally for motif retrieval, analogy search, and abstraction detection.
+
+Huch [2022] models the Isabelle Archive of Formal Proofs as a complex network (1.8M nodes, 2.8M edges) and studies centrality metrics, finding small-world structure and scale-free in-degree distributions. Like Li et al., this work examines static dependency centrality and does not pursue motif mining, analogy retrieval, or abstraction detection.
 
 Blanchette et al. [2015] mine the AFP empirically for proof statistics: proof size, tactic usage distributions, dependency structure, and proof style evolution. This is the most direct precursor to the motif mining proposal in §5.2. The key distinction is that Blanchette et al. report descriptive statistics over tactic sequences; this thesis proposes to extract structured motifs from proof-state transition graphs and use them operationally for retrieval and abstraction suggestion.
 
 PACT [Han et al., 2021] extracts self-supervised training tasks from Lean proof terms. LeanDojo [Yang et al., 2023] extracts proof states, premises, and tactic traces from Lean 4 at scale. The trace collection layer (§6 Layer 1) builds on and extends this infrastructure.
 
-#### 3.4 Proof Patterns and Mathematical Analogy
+#### 3.4 Proof-Pattern Mining and Tactic Discovery
 
-The identification of recurring proof structure has precursors in both formal methods and AI planning. Freitas and Whiteside [2014] identify named, reusable "proof patterns" for formal verification—recurring solutions to common proof obligations. These patterns are manually identified by experts; this thesis proposes automated discovery from data at scale.
+**Proof-pattern mining.** The most direct conceptual ancestors of this thesis are the ML4PG family of systems for Coq/SSReflect. ML4PG [Komendantskaya et al., 2012] is a machine learning plugin that clusters proof scripts by statistical features extracted from proof states and tactic sequences, identifying similarity across proof developments. Heras and Komendantskaya [2014] demonstrate that ML4PG can mine electronic Coq proof libraries and suggest proof strategies by analogy in "Recycling Proof Patterns." This is the clearest ancestor of Hypothesis 1 and §5.2 (Proof Motif Mining). The key distinctions from this thesis are: ML4PG uses shallow statistical features over tactic sequences rather than structured proof-state transition graphs; it operates on Coq/SSReflect at a scale far smaller than Lean/mathlib; and it does not address theorem analogy retrieval or missing abstraction detection.
+
+Freitas and Whiteside [2014] identify named, reusable "proof patterns" for formal verification—recurring solutions to common proof obligations—through manual expert identification; this thesis proposes automated discovery from data at scale.
+
+**Tactic discovery.** TacMiner [Xin et al., 2025] is the closest prior work to Project 1 (§7). It builds Tactic Dependence Graphs (TDGs) over Lean 4 proofs to identify reusable proof strategies across multiple proofs, discovers new tactic library entries, and refactors proofs into more modular forms—reporting 3× as many learned tactics as Peano and a 26% proof-size reduction. TacMiner is the state of the art in automated tactic discovery from proof graphs. The distinction from this thesis is one of scope: TacMiner targets tactic library compression as an end in itself; this thesis uses motif structure as a stepping stone toward theorem analogy retrieval, missing abstraction detection, and representation discovery at library scale.
+
+#### 3.5 Mathematical Analogy in Automated Reasoning
 
 Work on proof analogy in automated reasoning dates to the 1980s. Boy de la Tour and Caferra [1987] propose second-order pattern matching to transform known proof terms into candidates for analogous propositions. Melis and Veloso [1994] use derivational analogy at the level of proof plans to guide automated provers by replaying known analogous proofs. This thesis pursues analogy at a different level of abstraction—structural graph similarity across a large formal library—and aims at retrieval rather than direct proof transfer.
 
 The cognitive science foundation for relational analogy is structure-mapping theory [Gentner, 1983; Falkenhainer et al., 1989], which holds that analogical reasoning aligns relational structure between domains rather than surface features. The Structure-Mapping Engine (SME) operationalizes this as an algorithm over relational descriptions. The multi-layer graph retrieval proposed in §5.3 can be viewed as a large-scale, data-driven realization of structure-mapping principles in a formal mathematical setting.
 
-#### 3.5 Library Learning and Abstraction Discovery
+#### 3.6 Theory Exploration and Conjecture Generation
+
+Theory exploration systems automatically discover lemmas in a given formal theory development. Hipster [Johansson et al., 2014] integrates theory exploration into Isabelle/HOL using QuickSpec-style random testing to generate equational conjectures, then attempts to prove or prune them. LeanConjecturer [Onda et al., 2025] generates university-level mathematical conjectures for Lean 4 using LLMs, producing 12,289 conjectures from 40 Mathlib seed files.
+
+Both are conceptually related to §5.4 (Missing Abstraction Detection) in that both attempt to identify what mathematical statements are "missing" from a library. This thesis's approach differs by using proof-state transition graphs and dependency topology to detect where the library lacks abstractions—rather than generating conjectures by random testing or language model sampling—and by targeting structural pain points (repeated motifs, long coercion chains, high-branching bottlenecks) that indicate missing lemmas, typeclasses, or normal forms.
+
+#### 3.7 Library Learning and Abstraction Discovery
 
 The program synthesis community has studied abstraction discovery as a library learning problem. DreamCoder [Ellis et al., 2021] jointly learns reusable library abstractions and a neural search policy through wake-sleep iteration: during the wake phase it synthesizes programs; during the sleep phase it refactors common subprograms into reusable library components using a compression-based criterion. Stitch [Bowers et al., 2023] provides a significantly more efficient top-down abstraction algorithm for the same setting, using program compression ratio as the primary metric of abstraction quality. LAPS [Wong et al., 2021] extends DreamCoder with natural language annotations to guide library learning.
 
 These systems are the program synthesis analogues of what this thesis proposes for formal mathematics. The key differences are: (i) the objects are types and propositions rather than input-output examples; (ii) correctness is guaranteed by Lean's type checker rather than test suites; (iii) the abstraction space includes typeclasses, coercions, and universal properties, which have no direct program synthesis analogue; and (iv) the corpus is a mature human-curated library rather than a set of synthetic tasks.
 
-#### 3.6 Perspectives on Mathematical Abstraction
+#### 3.8 Perspectives on Mathematical Abstraction
 
 Mitchell [2021] reviews AI approaches to abstraction and analogy-making, concluding that no current system achieves human-level analogical generalization and proposing evaluation criteria. Zhang et al. [2023] examine AI for mathematics from a cognitive science perspective, arguing that current systems lack the representation-change capabilities that make human mathematical reasoning powerful—a diagnosis this thesis takes as its starting point.
 
@@ -488,7 +502,7 @@ Tactic prediction operates within the current library. Representation discovery 
 
 Tactic prediction tries to close goals. Representation discovery tries to invent the objects that make goals close naturally.
 
-This thesis also differs from the closest existing work on formal library analysis. Huch [2022] analyzes the Isabelle AFP as a complex network and studies centrality metrics, but examines only static dependency structure and does not mine proof-state dynamics, attempt motif retrieval, or suggest missing abstractions. Blanchette et al. [2015] mine the AFP for descriptive proof statistics but do not use the results operationally for retrieval or abstraction suggestion. Both works analyze formal libraries; this thesis uses formal library structure as an active substrate for representation discovery.
+This thesis also differs from the closest existing work on formal library analysis. Li et al. [2026] extract Mathlib's multilayer dependency graph and study its macroscopic structure, but examine only static dependencies and do not pursue proof-state dynamics, motif retrieval, or abstraction detection. Huch [2022] applies the same approach to the Isabelle AFP with the same limitation. Blanchette et al. [2015] mine the AFP for descriptive proof statistics but do not use the results operationally. TacMiner [Xin et al., 2025] builds Tactic Dependence Graphs over Lean 4 proofs to discover reusable tactic libraries—the closest prior work to Project 1—but targets tactic compression rather than representation discovery. All four works use formal library structure descriptively or for tactic automation; this thesis uses it as an active substrate for representation discovery.
 
 The long-term goal is not just an AI that proves existing theorems, but an AI that helps mathematicians build better mathematical languages.
 
@@ -507,6 +521,8 @@ Lean is especially suitable for this research because it combines several proper
 - enough library history to study abstraction evolution;
 - an active community of expert formalizers;
 - existing extraction infrastructure [Yang et al., 2023; Han et al., 2021].
+
+The richness and complexity of the Lean typeclass system provides additional motivation. Baanen [2022] analyzes how mathlib uses Lean's instance parameter mechanism to organize its algebraic, order, topology, and analysis hierarchies, showing that representation choices in the typeclass system are non-trivial, consequential, and frequently interwoven in ways that create design tension. This supports the thesis's premise that Lean/mathlib contains substantial traces of representation decisions worth studying.
 
 The HOL Light ecosystem provides a useful comparison point. HOList [Bansal et al., 2019] and the GNN work of Paliwal et al. [2020] demonstrate that graph-structured formal proof data supports meaningful machine learning. Lean/mathlib offers a richer typeclass hierarchy, a larger and more systematically organized library, and a more active community, making it a better substrate for studying abstraction at library scale.
 
@@ -686,6 +702,8 @@ This is the direction worth leading.
 
 ### References
 
+Baanen, A. (2022). Use and abuse of instance parameters in the Lean mathematical library. In *Interactive Theorem Proving (ITP 2022)*, LIPIcs volume 237, pages 4:1–4:20. Schloss Dagstuhl. arXiv:2202.01629.
+
 Bansal, K., Loos, S. M., Rabe, M. N., Szegedy, C., and Wilcox, S. (2019). HOList: An environment for machine learning of higher-order theorem proving. In *Proceedings of the 36th International Conference on Machine Learning (ICML)*, volume 97, pages 454–463.
 
 Blanchette, J. C., Haslbeck, M., Matichuk, D., and Nipkow, T. (2015). Mining the archive of formal proofs. In *Intelligent Computer Mathematics (CICM 2015)*, LNCS volume 9150, pages 3–17. Springer.
@@ -704,6 +722,8 @@ Falkenhainer, B., Forbus, K. D., and Gentner, D. (1989). The structure-mapping e
 
 Freitas, L. and Whiteside, I. (2014). Proof patterns for formal methods. In *FM 2014: Formal Methods*, LNCS volume 8442, pages 279–294. Springer.
 
+Gauthier, T., Kaliszyk, C., and Urban, J. (2017). Learning to reason with HOL4 tactics. In *21st International Conference on Logic for Programming, Artificial Intelligence and Reasoning (LPAR-21)*, EPiC Series in Computing, volume 46, pages 125–143. arXiv:1804.00595.
+
 Gao, G., Ju, H., Jiang, J., Qin, Z., and Dong, B. (2024). A semantic search engine for Mathlib4. arXiv:2403.13310.
 
 Gentner, D. (1983). Structure-mapping: A theoretical framework for analogy. *Cognitive Science*, 7(2):155–170.
@@ -712,9 +732,15 @@ Google DeepMind AlphaProof Team (2025). Olympiad-level formal mathematical reaso
 
 Han, J. M., Rabe, J., and van Doorn, F. (2021). Proof artifact co-training for theorem proving with language models. arXiv:2102.06203.
 
+Heras, J. and Komendantskaya, E. (2014). Recycling proof patterns in Coq: Case studies. *Mathematics in Computer Science*, 8(1):99–116. arXiv:1301.6039.
+
+Johansson, M., Rosén, D., Smallbone, N., and Claessen, K. (2014). Hipster: Integrating theory exploration in a proof assistant. In *Intelligent Computer Mathematics (CICM 2014)*, LNAI volume 8543, pages 108–122. Springer. arXiv:1405.3426.
+
 Huch, F. (2022). Formal entity graphs as complex networks: Assessing centrality metrics of the archive of formal proofs. In *Intelligent Computer Mathematics (CICM 2022)*, LNCS volume 13467, pages 148–163. Springer.
 
 Kaliszyk, C. and Urban, J. (2014). Learning-assisted automated reasoning with Flyspeck. *Journal of Automated Reasoning*, 53(2):173–213. arXiv:1211.7012.
+
+Komendantskaya, E., Heras, J., and Grov, G. (2012). Machine learning in proof general: Interfacing interfaces. arXiv:1212.3618.
 
 Koschke, R. (2007). Survey of research on software clones. In *Dagstuhl Seminar Proceedings 06301: Duplication, Redundancy, and Similarity in Software*.
 
@@ -722,11 +748,15 @@ Kühlwein, D., Blanchette, J. C., Kaliszyk, C., and Urban, J. (2013). MaSh: Mach
 
 Lample, G., Lachaux, M.-A., Lavril, T., Martinet, X., Hayat, A., Ebner, G., Rodriguez, A., and Lacroix, T. (2022). HyperTree proof search for neural theorem proving. In *Advances in Neural Information Processing Systems (NeurIPS)*, volume 35. arXiv:2205.11491.
 
+Li, X., Peng, N., Severini, S., and Shafto, P. (2026). The network structure of Mathlib. arXiv:2604.24797.
+
 mathlib Community (2020). The Lean mathematical library. In *Proceedings of the 9th ACM SIGPLAN International Conference on Certified Programs and Proofs (CPP)*, pages 367–381. arXiv:1910.09336.
 
 Melis, E. and Veloso, M. (1994). Analogy makes proofs feasible. In *AAAI-94 Workshop on Case-Based Reasoning*.
 
 Meng, J. and Paulson, L. C. (2009). Lightweight relevance filtering for machine-generated resolution problems. *Journal of Applied Logic*, 7(1):41–57.
+
+Onda, N., Kasaura, K., Oriike, Y., Taniguchi, M., Sannai, A., and Sonoda, S. (2025). LeanConjecturer: Automatic generation of mathematical conjectures for theorem proving. arXiv:2506.22005.
 
 Mitchell, M. (2021). Abstraction and analogy-making in artificial intelligence. *Annals of the New York Academy of Sciences*. arXiv:2102.10717.
 
@@ -737,6 +767,8 @@ Paulson, L. C. and Blanchette, J. C. (2010). Three years of experience with Sled
 Roy, C. K. and Cordy, J. R. (2007). A survey on software clone detection research. Technical Report 541, Queen's University.
 
 Thakur, A., Tsoukalas, G., Wen, Y., Xin, J., and Chaudhuri, S. (2023). An in-context learning agent for formal theorem-proving. arXiv:2310.04353.
+
+Xin, Y., Xin, J., Poesia, G., Goodman, N., Chen, Q., and Dillig, I. (2025). Automated discovery of tactic libraries for interactive theorem proving. *Proceedings of the ACM on Programming Languages*, 9(OOPSLA2). arXiv:2503.24036.
 
 Wong, C., Ellis, K., Tenenbaum, J. B., and Andreas, J. (2021). Leveraging language to learn program abstractions and search heuristics. In *Proceedings of the 38th International Conference on Machine Learning (ICML)*, volume 139, pages 11193–11204. arXiv:2106.11053.
 

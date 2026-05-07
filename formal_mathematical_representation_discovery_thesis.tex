@@ -183,33 +183,69 @@ networks to HOL Light formula graphs for tactic and premise prediction. These
 systems use graph structure within individual theorem statements but do not
 mine cross-theorem motifs or study abstraction at the library level.
 
-\citet{huch2022} models the Isabelle Archive of Formal Proofs as a complex
-network (1.8M nodes, 2.8M edges) and studies centrality metrics, finding
-small-world structure and scale-free in-degree distributions. This is the
-closest existing work to the graph extraction proposed in
-\S\ref{sec:extraction}, but it examines only static dependency centrality and
-does not pursue motif mining, analogy retrieval, or abstraction detection.
+\citet{li2026networkstructure} present a network analysis of Lean~4's
+Mathlib itself, extracting its dependency structure into a multilayer graph
+with over 308,000 declarations and millions of edges across thousands of
+modules, and introduce graph decompositions distinguishing explicit from
+compiler-synthesized edges. This is the closest existing work to the graph
+extraction proposed in \S\ref{sec:extraction}. The key difference is scope
+and use: \citeauthor{li2026networkstructure} study Mathlib's network structure
+descriptively; this thesis proposes to use graph structure operationally for
+motif retrieval, analogy search, and abstraction detection.
+
+\citet{huch2022} applies the same network-analysis approach to the Isabelle
+Archive of Formal Proofs (1.8M nodes, 2.8M edges). Like
+\citeauthor{li2026networkstructure}, this work examines static dependency
+centrality and does not pursue motif mining, analogy retrieval, or abstraction
+detection.
 
 \citet{blanchette2015mining} mine the AFP empirically for proof statistics:
 proof size, tactic usage distributions, dependency structure, and proof style
 evolution. This is the most direct precursor to the motif mining proposal in
-\S\ref{sec:motif-mining}. The key distinction is that \citet{blanchette2015mining}
-report descriptive statistics over tactic sequences; this thesis proposes to
-extract structured motifs from proof-state transition graphs and use them
-operationally for retrieval and abstraction suggestion.
+\S\ref{sec:motif-mining}. The key distinction is that
+\citeauthor{blanchette2015mining} report descriptive statistics over tactic
+sequences; this thesis proposes to extract structured motifs from proof-state
+transition graphs and use them operationally for retrieval and abstraction
+suggestion.
 
 PACT \citep{han2021pact} extracts self-supervised training tasks from Lean
 proof terms. LeanDojo \citep{yang2023leandojo} extracts proof states,
 premises, and tactic traces from Lean~4 at scale. The trace collection layer
 (\S\ref{sec:arch-layer1}) builds on and extends this infrastructure.
 
-\subsection{Proof Patterns and Mathematical Analogy}
+\subsection{Proof-Pattern Mining and Tactic Discovery}
 
-The identification of recurring proof structure has precursors in both formal
-methods and AI planning. \citet{freitas2014} identify named, reusable
-``proof patterns'' for formal verification---recurring solutions to common
-proof obligations. These patterns are manually identified by experts; this
-thesis proposes automated discovery from data at scale.
+\paragraph{Proof-pattern mining.}
+The most direct conceptual ancestors of this thesis are the ML4PG family of
+systems for Coq/SSReflect. \citet{komendantskaya2012ml4pg} introduce ML4PG,
+a machine learning plugin that clusters proof scripts by statistical features
+extracted from proof states and tactic sequences, identifying similarity
+across proof developments. \citet{heras2014recycling} demonstrate that ML4PG
+can mine electronic Coq proof libraries and suggest proof strategies by
+analogy. This is the clearest ancestor of Hypothesis~1 and
+\S\ref{sec:motif-mining}. The key distinctions from this thesis are:
+ML4PG uses shallow statistical features over tactic sequences rather than
+structured proof-state transition graphs; it operates on Coq/SSReflect at a
+scale far smaller than Lean/mathlib; and it does not address theorem analogy
+retrieval or missing abstraction detection.
+
+\citet{freitas2014} identify named, reusable ``proof patterns'' for formal
+verification---recurring solutions to common proof obligations---through
+manual expert identification; this thesis proposes automated discovery from
+data at scale.
+
+\paragraph{Tactic discovery.}
+TacMiner \citep{xin2025tacminer} is the closest prior work to Project~1
+(\S\ref{sec:agenda}). It builds Tactic Dependence Graphs over Lean~4 proofs
+to identify reusable proof strategies across multiple proofs, discovers new
+tactic library entries, and refactors proofs into more modular forms---reporting
+3$\times$ as many learned tactics as Peano and a 26\% proof-size reduction.
+The distinction from this thesis is one of scope: TacMiner targets tactic
+library compression as an end in itself; this thesis uses motif structure as a
+stepping stone toward theorem analogy retrieval, missing abstraction detection,
+and representation discovery at library scale.
+
+\subsection{Mathematical Analogy in Automated Reasoning}
 
 Work on proof analogy in automated reasoning dates to the 1980s.
 \citet{boydelatour1987} propose second-order pattern matching to transform
@@ -223,11 +259,26 @@ direct proof transfer.
 The cognitive science foundation for relational analogy is structure-mapping
 theory \citep{gentner1983, falkenhainer1989sme}, which holds that analogical
 reasoning aligns relational structure between domains rather than surface
-features. The Structure-Mapping Engine (SME) operationalizes this as an
-algorithm over relational descriptions. The multi-layer graph retrieval
-proposed in \S\ref{sec:retrieval} can be viewed as a large-scale,
-data-driven realization of structure-mapping principles in a formal
-mathematical setting.
+features. The multi-layer graph retrieval proposed in \S\ref{sec:retrieval}
+can be viewed as a large-scale, data-driven realization of structure-mapping
+principles in a formal mathematical setting.
+
+\subsection{Theory Exploration and Conjecture Generation}
+
+Theory exploration systems automatically discover lemmas in a given formal
+theory development. Hipster \citep{johansson2014hipster} integrates theory
+exploration into Isabelle/HOL using QuickSpec-style random testing to generate
+equational conjectures, then attempts to prove or prune them. LeanConjecturer
+\citep{onda2025leanconjecturer} generates university-level mathematical
+conjectures for Lean~4 using LLMs, producing 12,289 conjectures from 40
+Mathlib seed files.
+
+Both are conceptually related to \S\ref{sec:agenda} (Missing Abstraction
+Detection) in that both attempt to identify mathematical statements ``missing''
+from a library. This thesis's approach differs by using proof-state transition
+graphs and dependency topology to detect representation bottlenecks (repeated
+motifs, long coercion chains, high-branching bottleneck states) and evaluating
+suggestions by proof compression rather than by provability alone.
 
 \subsection{Library Learning and Abstraction Discovery}
 
@@ -381,11 +432,12 @@ A proof motif is a repeated local or global pattern in proof-state evolution.
 It is not merely a tactic sequence---it is a structural transformation
 pattern over goals, hypotheses, and generated subgoals.
 
-Empirical analysis of the Isabelle AFP \citep{blanchette2015mining} and
-manually curated proof patterns for formal methods \citep{freitas2014} suggest
-that such recurring structures exist. The open question is whether they can
-be discovered automatically from proof-state transition graphs in a form
-useful for retrieval and proof planning.
+The ML4PG family of systems \citep{komendantskaya2012ml4pg, heras2014recycling}
+and empirical analysis of the Isabelle AFP \citep{blanchette2015mining} and
+manually curated proof patterns \citep{freitas2014} all provide prior evidence
+that recurring structures exist. The open question is whether they can be
+discovered automatically from proof-state transition graphs in a form useful
+for retrieval and proof planning, at the scale of Lean/mathlib.
 
 The project would mine frequent subgraphs from proof-state transition graphs
 and cluster them by structural similarity, producing a library of proof
@@ -596,14 +648,18 @@ itself should evolve. Tactic prediction tries to close goals; representation
 discovery tries to invent the objects that make goals close naturally.
 
 This thesis also differs from the closest existing work on formal library
-analysis. \citet{huch2022} analyzes the Isabelle AFP as a complex network and
-studies centrality metrics, but examines only static dependency structure and
-does not mine proof-state dynamics, attempt motif retrieval, or suggest
-missing abstractions. \citet{blanchette2015mining} mine the AFP for
-descriptive proof statistics but do not use the results operationally for
-retrieval or abstraction suggestion. Both works analyze formal libraries; this
-thesis uses formal library structure as an active substrate for representation
-discovery.
+analysis. \citet{li2026networkstructure} extract Mathlib's multilayer
+dependency graph and study its macroscopic structure but examine only static
+dependencies and do not pursue proof-state dynamics, motif retrieval, or
+abstraction detection. \citet{huch2022} applies the same approach to the
+Isabelle AFP with the same limitation. \citet{blanchette2015mining} mine the
+AFP for descriptive proof statistics but do not use the results operationally.
+TacMiner \citep{xin2025tacminer} builds Tactic Dependence Graphs over Lean~4
+proofs to discover reusable tactic libraries---the closest prior work to
+Project~1---but targets tactic compression rather than representation
+discovery. All four works use formal library structure descriptively or for
+tactic automation; this thesis uses it as an active substrate for
+representation discovery.
 
 The long-term goal is not just an AI that proves existing theorems, but an
 AI that helps mathematicians build better mathematical languages.
@@ -618,6 +674,14 @@ development; machine-checkable proof terms; substantial use of abstraction
 and hierarchy; enough library history to study abstraction evolution; an
 active community of expert formalizers; and existing extraction infrastructure
 \citep{yang2023leandojo, han2021pact}.
+
+The richness of the Lean typeclass system provides additional motivation.
+\citet{baanen2022instances} analyzes how mathlib uses Lean's instance
+parameter mechanism to organize its algebraic, order, topology, and analysis
+hierarchies, showing that representation choices in the typeclass system are
+non-trivial, consequential, and frequently interwoven in ways that create
+design tension---supporting the thesis's premise that Lean/mathlib contains
+substantial traces of representation decisions worth studying.
 
 The HOL Light ecosystem provides a useful comparison point. HOList
 \citep{bansal2019holist} and the GNN work of \citet{paliwal2020graph}
