@@ -68,6 +68,24 @@ It will come from learning how mathematical representations are discovered,
 reused, compressed, and transferred across domains.
 \end{quote}
 
+A sharper formulation of the same idea:
+
+\begin{quote}
+Proof is not just search in a fixed graph. Advanced proof is search over
+representations that reshape the graph. Lean/mathlib gives us the first
+large-scale substrate for studying this process computationally.
+\end{quote}
+
+Most current AI theorem proving systems operate at one level:
+\begin{center}
+\texttt{proof state $\to$ retrieve premises $\to$ generate tactic $\to$ search}
+\end{center}
+This research operates one level higher:
+\begin{center}
+\texttt{formal library / proof traces $\to$ detect motifs, bottlenecks,}\\
+\texttt{analogies, missing abstractions $\to$ reshape the search space}
+\end{center}
+
 A formal mathematics system such as Lean gives us, for the first time, an
 empirical substrate for studying this process. It exposes the topology of
 proof search, the dependency geometry of mathematical concepts, the recurring
@@ -112,7 +130,20 @@ theorems reusable. A typeclass hierarchy, a bundled structure, a coercion
 mechanism, a normal form, or a carefully shaped lemma can dramatically reduce
 proof complexity across hundreds of downstream results.
 
-This suggests a new view:
+In ordinary computer science, we design data structures and then search on
+them. In higher mathematics, the hardest step is often discovering the right
+data structure---the right abstraction---first. A clever proof does not merely
+search an existing space; it changes the topology of the search space by
+folding equivalent states, exposing invariants, creating bottleneck lemmas,
+and turning a huge unstructured search into a narrow, reusable path.
+
+This suggests a central slogan for the entire program:
+
+\begin{quote}
+\textbf{Mathematical abstraction is search-space compression.}
+\end{quote}
+
+More precisely:
 
 \begin{quote}
 A mathematical abstraction is valuable when it compresses proof search and
@@ -368,6 +399,22 @@ These bottleneck states may correspond to useful intermediate lemmas,
 invariants, or representation changes, and their geometry may guide lemma
 invention and proof planning.
 
+\subsection{Hypothesis 6: Proof Search Is Highly Non-Ergodic, and Good
+Representations Create Low-Dimensional Funnels}
+
+Proof search in a formal library is not uniform exploration of a search graph.
+It is highly non-ergodic: most tactic moves are useless, few intermediate
+states are reachable from a given goal, and a small number of lemmas act as
+bottlenecks through which many proof paths pass. Good mathematical
+representations do not merely simplify individual steps---they create
+low-dimensional proof funnels that collapse many equivalent search paths into
+one.
+
+This suggests a deeper theoretical layer: the geometry of proof-state space
+can be characterized by notions analogous to bottleneck centrality, branching
+entropy, and proof-state diameter. Representation changes that reduce these
+quantities are the formal counterpart of mathematical insight.
+
 % -----------------------------------------------------------------------
 \section{Research Agenda}
 \label{sec:agenda}
@@ -524,6 +571,42 @@ accepted suggestions shorten proofs.
 \textit{Synthetic}: Remove or hide known lemmas and abstractions from a
 subset of the library and test whether the system rediscovers the need for
 them.
+
+\subsection{Abstraction Compression Metrics}
+
+Underlying all four components is the need for a quantitative theory of
+abstraction value. This component defines and empirically validates metrics
+for how much a mathematical abstraction compresses proof search.
+
+Candidate metrics include: proof length reduction; dependency depth reduction;
+branching factor reduction; search entropy reduction; reuse centrality (how
+many downstream proofs invoke the abstraction); motif unification count (how
+many previously distinct motifs collapse into one); proof-state diameter
+reduction; and transportability across domains.
+
+The key claim:
+\begin{quote}
+A mathematical abstraction is valuable not merely because it is elegant, but
+because it changes the geometry of proof search.
+\end{quote}
+
+\subsection{Intermediate Lemma and Bottleneck Discovery}
+
+A focused application of proof-state geometry (Hypothesis~6) is to identify
+candidate intermediate lemmas directly from proof graphs. If many proof paths
+pass through similar intermediate states, those states correspond to reusable
+subgoals---natural candidates for new lemmas.
+
+The contribution is a system that detects high-betweenness proof states and
+repeated subgoal shapes across different proofs, and proposes them as
+intermediate lemma candidates. Discovered lemmas can be directly supplied to
+proof search as premises, shortening proof traces and improving search
+coverage.
+
+\paragraph{Evaluation.}
+Can discovered lemmas shorten existing proofs? Can they help prove held-out
+theorems when added as premises? Do they correspond to lemmas that humans
+later added to mathlib? Do they improve tactic search success rate?
 
 % -----------------------------------------------------------------------
 \section{Technical Architecture}
@@ -810,6 +893,15 @@ mining on mathlib,'' or ``retrieval for Lean.'' It is the study and
 automation of how formal mathematical representations are created,
 compressed, reused, and transported.
 
+The best short slogans are:
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{From proof search to representation search.}
+  \item \textbf{Mathematical abstraction is search-space compression.}
+  \item \textbf{Lean as a microscope for the geometry of proof.}
+\end{itemize}
+
+A concise positioning statement:
+
 \begin{quote}
 We use Lean/mathlib as a machine-readable record of mathematical abstraction.
 By extracting and analyzing proof-state graphs, theorem dependency graphs,
@@ -878,9 +970,12 @@ By treating formal mathematics libraries as graph-structured records of
 representation, proof, and abstraction, we can build AI systems that retrieve
 deep analogies, discover reusable proof motifs, identify missing abstractions,
 and guide mathematicians toward better representations. This shifts AI for
-mathematics from local proof search toward representation discovery, the level
-at which much of mathematical creativity actually occurs.
+mathematics from local proof search toward representation discovery---from
+searching in a fixed graph to searching for better graphs.
 \end{quote}
+
+Mathematical abstraction is search-space compression. Lean/mathlib is the
+first dataset large enough to study this empirically.
 
 This is the direction worth leading.
 
