@@ -707,7 +707,20 @@ through proof compression.
 
 \textbf{Paper claim}: Formal libraries contain measurable representational
 pain points that can be used to suggest abstractions reducing proof
-complexity.
+complexity---detectable retrospectively from library history.
+
+\subsection{Project 4: Proof-State Geometry and Intermediate Lemma Discovery}
+
+\textbf{Research question}: Do high-betweenness proof states correspond to
+useful intermediate lemmas, and do library-mined bottleneck lemmas improve
+proof automation?
+
+\textbf{Deliverables}: proof-state betweenness and entropy metrics; bottleneck
+state detector; candidate lemma generator; evaluation of whether suggested
+lemmas shorten held-out proofs or appear later in mathlib history.
+
+\textbf{Paper claim}: Proof-state geometry reveals candidate intermediate
+lemmas that reduce proof complexity and improve downstream proof automation.
 
 % -----------------------------------------------------------------------
 \section{Why This Is Different From Existing AI Theorem Proving}
@@ -722,6 +735,16 @@ This research asks a different question:
 Given a mathematical landscape, what representation would make proof search
 easier?
 \end{quote}
+
+The contrast is precise. Current systems:
+\begin{center}
+\texttt{proof state $\to$ retrieve premises $\to$ generate tactic $\to$ search}
+\end{center}
+This research:
+\begin{center}
+\texttt{formal library / proof traces $\to$ detect motifs, bottlenecks,}\\
+\texttt{analogies, missing abstractions $\to$ reshape the search space}
+\end{center}
 
 Tactic prediction is local; representation discovery is global. Tactic
 prediction imitates proof scripts; representation discovery studies why some
@@ -813,6 +836,29 @@ The long-term vision is an AI-native environment for formal mathematics in
 which the system does not merely autocomplete proofs, but actively helps
 users navigate the space of mathematical representations.
 
+A mathematician working in such an environment could ask:
+\begin{itemize}[leftmargin=1.5em]
+  \item ``What does this theorem resemble?''
+  \item ``Where has this proof pattern appeared before?''
+  \item ``What abstraction would unify these lemmas?''
+  \item ``What intermediate lemma would make this proof modular?''
+  \item ``Is this difficulty mathematical, or caused by library representation?''
+  \item ``Can this theorem be transported to another domain?''
+  \item ``What concept is missing from this part of the library?''
+\end{itemize}
+
+And the system would respond not just with tactic suggestions, but with
+structural observations:
+\begin{itemize}[leftmargin=1.5em]
+  \item ``This resembles a proof pattern from homological algebra.''
+  \item ``You are missing an intermediate lemma of this shape.''
+  \item ``This cluster of theorems suggests a new abstraction here.''
+  \item ``Your proof is hard because the representation is wrong---transport
+        through this equivalence.''
+  \item ``Quotient these equivalent states first.''
+  \item ``Define this invariant before proceeding.''
+\end{itemize}
+
 The program synthesis community has shown that library learning from a corpus
 of programs is feasible: DreamCoder \citep{ellis2021dreamcoder} and Stitch
 \citep{bowers2023stitch} demonstrate that useful abstractions can be
@@ -839,13 +885,14 @@ machines can learn the dynamics of mathematical abstraction.
 If this is true, then the future of AI for mathematics is not merely
 automated proof. It is automated representation discovery.
 
-The path from the three initial projects to this vision requires
+The path from the four initial projects to this vision requires
 demonstrating, sequentially: (i)~that proof-state motifs exist and are
 cross-domain; (ii)~that graph-based analogy retrieval outperforms text-based
-retrieval on a held-out benchmark; and (iii)~that the system's
+retrieval on a held-out benchmark; (iii)~that the system's
 missing-abstraction suggestions correspond to genuine improvements in
-mathlib. Each step is independently publishable and provides the empirical
-foundation for the next.
+mathlib; and (iv)~that proof-state geometry yields useful intermediate lemmas
+and quantifiable compression metrics. Each step is independently publishable
+and provides the empirical foundation for the next.
 
 % -----------------------------------------------------------------------
 \section{Risks and Failure Modes}
