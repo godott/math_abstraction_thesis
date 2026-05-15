@@ -234,6 +234,8 @@ A useful intermediate representation should support:
 
 This infrastructure is the foundation for all later work.
 
+**Normalization strategy: neuro-symbolic, not purely symbolic.** A critical design decision concerns how normalization is achieved in practice. Lean expressions are notoriously difficult to normalize purely symbolically: two mathematically identical proof states can have wildly different abstract syntax trees because they are *definitionally equal* (defeq), and raw terms contain universe variables, hygiene variables (`x✝`), invisible typeclass dictionaries, and elaboration artifacts that symbolic quotienting cannot easily handle without spending years fighting the Lean compiler. The chosen approach is therefore explicitly **neuro-symbolic**: symbolic preprocessing (alpha-renaming, implicit argument erasure, tactic categorization) reduces obvious syntactic variation, but the primary normalization mechanism is a learned graph embedding that maps syntactically diverse but mathematically equivalent structures to nearby points in a continuous latent space. Mathematical similarity then operates on this latent representation, absorbing the defeq noise that symbolic matchers choke on.
+
 ---
 
 #### 5.2 Proof Motif Mining
@@ -254,7 +256,7 @@ decompose algebraic structure → discharge laws field-by-field
 normalize coercions → close by definitional equality
 ```
 
-The project would mine frequent subgraphs from proof-state transition graphs and cluster them by structural similarity. The result would be a library of proof motifs with taxonomic structure.
+The project mines motifs from learned graph embeddings rather than raw symbolic graphs. Exact frequent subgraph mining (FSM) is NP-hard and would computationally explode on mathlib's scale; symbolic matching also cannot handle the definitional-equality ambiguity inherent in Lean's type theory. Instead, proof-state embeddings are computed by a GNN trained contrastively on the graph IR; motifs emerge as dense clusters in the resulting latent space, discoverable via approximate nearest-neighbor search and clustering (e.g., k-means or HDBSCAN). This is the same strategy that makes image texture clustering tractable despite pixel-level variation. The result is a library of proof motifs with taxonomic structure.
 
 ##### Evaluation
 
@@ -355,7 +357,10 @@ Candidate metrics include:
 - **reuse centrality**: how many downstream proofs invoke the abstraction;
 - **motif unification count**: how many previously distinct motifs collapse into one after the abstraction;
 - **proof-state diameter reduction**: how much the maximum distance between proof-state endpoints shrinks;
-- **transportability**: whether the abstraction enables previously unavailable cross-domain results.
+- **transportability**: whether the abstraction enables previously unavailable cross-domain results;
+- **automated refactor compression**: when the system proposes a new intermediate lemma or abstraction, it automatically refactors downstream mathlib proof files to use it, recompiles, and measures the reduction in total proof size (AST depth, token count, tactic step count).
+
+The last metric is the most concrete and undeniable validation of the thesis. A mathlib maintainer accepting an AI-generated structural refactor pull request—where downstream proofs become shorter, simpler, and cleaner—constitutes direct empirical proof that the system has discovered a genuine improvement to the library's representation. This should be the flagship evaluation for Project 3.
 
 The contribution is a quantitative framework for asking: does this definition, lemma, or typeclass make proof search easier, and by how much? This is the intellectual core of the thesis.
 
@@ -664,11 +669,11 @@ The path from the four initial projects to this vision requires demonstrating, s
 
 This direction has several risks.
 
-#### Risk 1: Lean artifacts may overwhelm mathematical signal.
+#### Risk 1: Lean artifacts may overwhelm mathematical signal — especially definitional equality.
 
-Proof states contain many artifacts from elaboration, typeclass resolution, coercions, and naming choices. Graph mining may discover Lean-specific noise rather than mathematical structure.
+Proof states contain many artifacts from elaboration, typeclass resolution, coercions, and naming choices. The deepest version of this problem is *definitional equality* (defeq): two mathematically identical proof states can have wildly different ASTs because Lean transparently unfolds definitions, inserts coercions, and resolves implicit arguments in varied ways. Additionally, hygiene macros produce variables like `x✝` that have no mathematical meaning. A purely symbolic normalization approach will spend years battling the Lean compiler before reaching any learning phase.
 
-**Mitigation**: Use normalization, quotienting, ablation studies, cross-namespace validation, and where possible comparison across different formalizations of the same mathematics.
+**Mitigation**: Adopt a neuro-symbolic strategy (see §5.1): symbolic preprocessing handles obvious syntactic variation, while a GNN embedding absorbs defeq noise by mapping structurally equivalent states to nearby latent-space regions. Supplement with ablation studies, cross-namespace validation, and comparison across different formalizations of the same mathematics.
 
 #### Risk 2: Graph similarity may not correspond to meaningful analogy.
 
@@ -692,7 +697,13 @@ Tracing all of mathlib may be large, brittle, or slow. LeanDojo [Yang et al., 20
 
 The big picture is attractive, but the field will only move if concrete systems and evaluations exist.
 
-**Mitigation**: Anchor the research agenda in four initial artifacts—motif miner, analogy retriever, missing abstraction detector, and bottleneck lemma discoverer—each with a concrete, reproducible evaluation.
+**Mitigation**: Anchor the research agenda in four initial artifacts—motif miner, analogy retriever, missing abstraction detector, and bottleneck lemma discoverer—each with a concrete, reproducible evaluation. The automated PR to mathlib metric (§5.5) provides an external, undeniable benchmark that grounds the most ambitious claims.
+
+#### Risk 6: Subgraph mining may not scale to mathlib.
+
+Exact frequent subgraph mining (FSM) is NP-hard. Applying it directly to a multi-layer graph with hundreds of thousands of nodes will computationally explode, and approximate symbolic FSM still struggles with the defeq ambiguity described in Risk 1.
+
+**Mitigation**: Do not use exact symbolic FSM. Use the neuro-symbolic pipeline: embed proof-state graphs with a GNN, then cluster the latent space with approximate nearest-neighbor methods (HDBSCAN, k-means). "Motifs" are dense clusters in embedding space, not exact graph isomorphism classes. This reduces an NP-hard combinatorial search to a scalable geometric clustering problem.
 
 ---
 
